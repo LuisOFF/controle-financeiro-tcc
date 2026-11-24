@@ -8,13 +8,23 @@ const cores   = ['#4ade80','#60a5fa','#c084fc','#fb923c','#f472b6','#facc15','#f
 const vazio   = { nome: '', objetivo: '', atual: '', icone: '🎯', cor: '#4ade80' }
 
 export default function Metas() {
-  const { metas, adicionarMeta, atualizarMeta, removerMeta } = useFinance()
+  const { metas, adicionarMeta, atualizarMeta, removerMeta, loading } = useFinance()
   const [modalAberto, setModalAberto]     = useState(false)
   const [modalDeposito, setModalDeposito] = useState(null)
+  const [metaExcluir, setMetaExcluir]     = useState(null)
   const [form, setForm]                   = useState(vazio)
   const [deposito, setDeposito]           = useState('')
   const [erro, setErro]                   = useState('')
   const [salvando, setSalvando]           = useState(false)
+  const [excluindo, setExcluindo]         = useState(false)
+
+  if (loading) {
+    return (
+      <div className="metas-page" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+        Carregando metas...
+      </div>
+    )
+  }
 
   const totalObjetivo   = metas.reduce((acc, m) => acc + m.objetivo, 0)
   const totalAtual      = metas.reduce((acc, m) => acc + m.atual, 0)
@@ -59,6 +69,20 @@ export default function Metas() {
     await atualizarMeta(modalDeposito.id, novoAtual)
     setDeposito('')
     setModalDeposito(null)
+  }
+
+  async function handleConfirmarExclusao() {
+    if (!metaExcluir || excluindo) return
+    try {
+      setExcluindo(true)
+      setErro('')
+      await removerMeta(metaExcluir.id)
+      setMetaExcluir(null)
+    } catch (err) {
+      setErro(err.message || 'Erro ao excluir meta.')
+    } finally {
+      setExcluindo(false)
+    }
   }
 
   function formatarValor(v) {
@@ -118,7 +142,12 @@ export default function Metas() {
                     <h3>{meta.nome}</h3>
                     {concluida && <span className="badge-concluida">Concluída</span>}
                   </div>
-                  <button className="btn-remover-meta" onClick={() => removerMeta(meta.id)}>
+                  <button
+                    type="button"
+                    className="btn-remover-meta"
+                    onClick={() => { setErro(''); setMetaExcluir(meta) }}
+                    title="Excluir meta"
+                  >
                     <Trash2 size={15} />
                   </button>
                 </div>
@@ -230,6 +259,51 @@ export default function Metas() {
                 Confirmar depósito
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {metaExcluir && (
+        <div className="modal-overlay" onClick={() => !excluindo && setMetaExcluir(null)}>
+          <div className="modal modal-pequeno" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Excluir meta</h3>
+              <button className="modal-fechar" onClick={() => setMetaExcluir(null)} disabled={excluindo}>
+                <X size={20} />
+              </button>
+            </div>
+            <div className="modal-form">
+              <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                Tem certeza que deseja excluir esta meta? Essa ação não poderá ser desfeita.
+              </p>
+              <div className="deposito-info">
+                <span>{metaExcluir.icone}</span>
+                <strong>{metaExcluir.nome}</strong>
+              </div>
+              <p className="deposito-saldo">
+                {formatarValor(metaExcluir.atual)} de {formatarValor(metaExcluir.objetivo)}
+              </p>
+              {erro && <div className="form-erro">{erro}</div>}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <button
+                  type="button"
+                  className="tipo-btn"
+                  onClick={() => setMetaExcluir(null)}
+                  disabled={excluindo}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  className="btn-salvar"
+                  style={{ background: '#ef4444', color: '#ffffff' }}
+                  onClick={handleConfirmarExclusao}
+                  disabled={excluindo}
+                >
+                  {excluindo ? 'Excluindo...' : 'Excluir'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

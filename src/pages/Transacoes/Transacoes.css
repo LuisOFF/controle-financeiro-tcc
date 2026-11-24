@@ -78,7 +78,7 @@
 
 .tabela-header {
   display: grid;
-  grid-template-columns: 2fr 1.5fr 1fr 1fr 40px;
+  grid-template-columns: 2fr 1.5fr 1fr 1fr 76px;
   padding: 12px 20px;
   background: var(--bg-muted);
   font-size: 12px;
@@ -90,7 +90,7 @@
 
 .tabela-row {
   display: grid;
-  grid-template-columns: 2fr 1.5fr 1fr 1fr 40px;
+  grid-template-columns: 2fr 1.5fr 1fr 1fr 76px;
   padding: 14px 20px;
   border-top: 1px solid var(--border-muted);
   font-size: 14px;
@@ -119,20 +119,54 @@
 .t-valor.receita  { color: #22c55e; }
 .t-valor.despesa  { color: #ef4444; }
 
-.btn-remover {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--border-color);
+.tx-acoes-row {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.btn-editar-tx {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #f0fdf422;
+  color: #22c55e;
+  border: 1px solid #22c55e44;
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
-  border-radius: 6px;
-  padding: 4px;
+  cursor: pointer;
+  padding: 0;
   transition: all 0.2s;
 }
 
-.btn-remover:hover { color: #ef4444; background: #fef2f222; }
+.btn-editar-tx:hover {
+  background: #22c55e;
+  color: #ffffff;
+  border-color: #22c55e;
+}
+
+.btn-remover {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #fef2f222;
+  color: #ef4444;
+  border: 1px solid #ef444444;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.2s;
+}
+
+.btn-remover:hover {
+  background: #ef4444;
+  color: #ffffff;
+  border-color: #ef4444;
+}
 
 .tabela-vazia {
   padding: 40px;

@@ -106,6 +106,7 @@ async function buscarConta(req, res) {
   }
 }
 
+// --- TRANSAÇÕES ---
 async function listarTransacoes(req, res) {
   try {
     const usuario = await prisma.usuario.findUnique({ where: { id: req.usuarioId } })
@@ -142,16 +143,53 @@ async function adicionarTransacao(req, res) {
   }
 }
 
+async function atualizarTransacao(req, res) {
+  try {
+    const usuario = await prisma.usuario.findUnique({ where: { id: req.usuarioId } })
+    if (!usuario.contaId) return res.status(403).json({ erro: 'Acesso negado.' })
+
+    const { id } = req.params
+    const { desc, tipo, categoria, valor, data } = req.body
+
+    const existente = await prisma.transacaoCompartilhada.findFirst({
+      where: { id: parseInt(id), contaId: usuario.contaId }
+    })
+    if (!existente) return res.status(404).json({ erro: 'Transação não encontrada.' })
+
+    const atualizada = await prisma.transacaoCompartilhada.update({
+      where: { id: parseInt(id) },
+      data: {
+        desc,
+        tipo,
+        categoria,
+        valor: parseFloat(valor),
+        data,
+      }
+    })
+    res.json(atualizada)
+  } catch (err) {
+    res.status(500).json({ erro: 'Erro ao atualizar transação.' })
+  }
+}
+
 async function removerTransacao(req, res) {
   try {
+    const usuario = await prisma.usuario.findUnique({ where: { id: req.usuarioId } })
+    if (!usuario.contaId) return res.status(403).json({ erro: 'Acesso negado.' })
+
     const { id } = req.params
-    await prisma.transacaoCompartilhada.delete({ where: { id: parseInt(id) } })
+    const resultado = await prisma.transacaoCompartilhada.deleteMany({
+      where: { id: parseInt(id), contaId: usuario.contaId }
+    })
+
+    if (resultado.count === 0) return res.status(404).json({ erro: 'Transação não encontrada.' })
     res.json({ mensagem: 'Transação removida.' })
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao remover transação.' })
   }
 }
 
+// --- METAS ---
 async function listarMetas(req, res) {
   try {
     const usuario = await prisma.usuario.findUnique({ where: { id: req.usuarioId } })
@@ -187,11 +225,27 @@ async function adicionarMeta(req, res) {
 
 async function atualizarMeta(req, res) {
   try {
+    const usuario = await prisma.usuario.findUnique({ where: { id: req.usuarioId } })
+    if (!usuario.contaId) return res.status(403).json({ erro: 'Acesso negado.' })
+
     const { id } = req.params
-    const { atual } = req.body
+    const { nome, objetivo, atual, icone, cor } = req.body
+
+    const metaExistente = await prisma.metaCompartilhada.findFirst({
+      where: { id: parseInt(id), contaId: usuario.contaId }
+    })
+    if (!metaExistente) return res.status(404).json({ erro: 'Meta não encontrada.' })
+
+    const dadosAtualizacao = {}
+    if (nome !== undefined) dadosAtualizacao.nome = nome
+    if (objetivo !== undefined) dadosAtualizacao.objetivo = parseFloat(objetivo)
+    if (atual !== undefined) dadosAtualizacao.atual = parseFloat(atual)
+    if (icone !== undefined) dadosAtualizacao.icone = icone
+    if (cor !== undefined) dadosAtualizacao.cor = cor
+
     const meta = await prisma.metaCompartilhada.update({
       where: { id: parseInt(id) },
-      data: { atual: parseFloat(atual) }
+      data: dadosAtualizacao
     })
     res.json(meta)
   } catch (err) {
@@ -201,14 +255,22 @@ async function atualizarMeta(req, res) {
 
 async function removerMeta(req, res) {
   try {
+    const usuario = await prisma.usuario.findUnique({ where: { id: req.usuarioId } })
+    if (!usuario.contaId) return res.status(403).json({ erro: 'Acesso negado.' })
+
     const { id } = req.params
-    await prisma.metaCompartilhada.delete({ where: { id: parseInt(id) } })
+    const resultado = await prisma.metaCompartilhada.deleteMany({
+      where: { id: parseInt(id), contaId: usuario.contaId }
+    })
+
+    if (resultado.count === 0) return res.status(404).json({ erro: 'Meta não encontrada.' })
     res.json({ mensagem: 'Meta removida.' })
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao remover meta.' })
   }
 }
 
+// --- CARTEIRAS ---
 async function listarCarteiras(req, res) {
   try {
     const usuario = await prisma.usuario.findUnique({ where: { id: req.usuarioId } })
@@ -241,16 +303,52 @@ async function adicionarCarteira(req, res) {
   }
 }
 
+async function atualizarCarteira(req, res) {
+  try {
+    const usuario = await prisma.usuario.findUnique({ where: { id: req.usuarioId } })
+    if (!usuario.contaId) return res.status(403).json({ erro: 'Acesso negado.' })
+
+    const { id } = req.params
+    const { nome, tipo, saldo, cor } = req.body
+
+    const existente = await prisma.carteiraCompartilhada.findFirst({
+      where: { id: parseInt(id), contaId: usuario.contaId }
+    })
+    if (!existente) return res.status(404).json({ erro: 'Carteira não encontrada.' })
+
+    const carteira = await prisma.carteiraCompartilhada.update({
+      where: { id: parseInt(id) },
+      data: {
+        nome,
+        tipo,
+        saldo: parseFloat(saldo) || 0,
+        cor: cor || existente.cor,
+      }
+    })
+    res.json(carteira)
+  } catch (err) {
+    res.status(500).json({ erro: 'Erro ao atualizar carteira.' })
+  }
+}
+
 async function removerCarteira(req, res) {
   try {
+    const usuario = await prisma.usuario.findUnique({ where: { id: req.usuarioId } })
+    if (!usuario.contaId) return res.status(403).json({ erro: 'Acesso negado.' })
+
     const { id } = req.params
-    await prisma.carteiraCompartilhada.delete({ where: { id: parseInt(id) } })
+    const resultado = await prisma.carteiraCompartilhada.deleteMany({
+      where: { id: parseInt(id), contaId: usuario.contaId }
+    })
+
+    if (resultado.count === 0) return res.status(404).json({ erro: 'Carteira não encontrada.' })
     res.json({ mensagem: 'Carteira removida.' })
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao remover carteira.' })
   }
 }
 
+// --- MEMBROS ---
 async function removerMembro(req, res) {
   try {
     const { usuarioId } = req.params
@@ -287,7 +385,7 @@ async function removerMembro(req, res) {
 module.exports = {
   criarConta, entrarConta, sairConta, buscarConta,
   removerMembro,
-  listarTransacoes, adicionarTransacao, removerTransacao,
+  listarTransacoes, adicionarTransacao, atualizarTransacao, removerTransacao,
   listarMetas, adicionarMeta, atualizarMeta, removerMeta,
-  listarCarteiras, adicionarCarteira, removerCarteira,
+  listarCarteiras, adicionarCarteira, atualizarCarteira, removerCarteira,
 }

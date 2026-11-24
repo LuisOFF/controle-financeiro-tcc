@@ -12,7 +12,7 @@ model Usuario {
   nome      String
   email     String   @unique
   senha     String
-  criadoEm DateTime @default(now())
+  criadoEm  DateTime @default(now())
 
   contaId   Int?
   conta     ContaCompartilhada? @relation(fields: [contaId], references: [id])
@@ -20,13 +20,15 @@ model Usuario {
   transacoes        Transacao[]
   metas             Meta[]
   carteiras         Carteira[]
+  orcamentos        Orcamento[]
+  historicos        Historico[]
   tokensRecuperacao TokenRecuperacao[]
 }
 
 model ContaCompartilhada {
   id        Int      @id @default(autoincrement())
   codigo    String   @unique
-  criadoEm DateTime @default(now())
+  criadoEm  DateTime @default(now())
 
   usuarios   Usuario[]
   transacoes TransacaoCompartilhada[]
@@ -41,11 +43,11 @@ model TransacaoCompartilhada {
   categoria String
   valor     Float
   data      String
-  criadoEm DateTime @default(now())
+  criadoEm  DateTime @default(now())
   autorNome String
 
   contaId Int
-  conta   ContaCompartilhada @relation(fields: [contaId], references: [id])
+  conta   ContaCompartilhada @relation(fields: [contaId], references: [id], onDelete: Cascade)
 }
 
 model MetaCompartilhada {
@@ -57,7 +59,7 @@ model MetaCompartilhada {
   cor      String @default("#4ade80")
 
   contaId Int
-  conta   ContaCompartilhada @relation(fields: [contaId], references: [id])
+  conta   ContaCompartilhada @relation(fields: [contaId], references: [id], onDelete: Cascade)
 }
 
 model CarteiraCompartilhada {
@@ -68,7 +70,7 @@ model CarteiraCompartilhada {
   cor   String @default("#60a5fa")
 
   contaId Int
-  conta   ContaCompartilhada @relation(fields: [contaId], references: [id])
+  conta   ContaCompartilhada @relation(fields: [contaId], references: [id], onDelete: Cascade)
 }
 
 model Transacao {
@@ -78,10 +80,10 @@ model Transacao {
   categoria String
   valor     Float
   data      String
-  criadoEm DateTime @default(now())
+  criadoEm  DateTime @default(now())
 
   usuarioId Int
-  usuario   Usuario @relation(fields: [usuarioId], references: [id])
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 }
 
 model Meta {
@@ -93,7 +95,7 @@ model Meta {
   cor      String @default("#4ade80")
 
   usuarioId Int
-  usuario   Usuario @relation(fields: [usuarioId], references: [id])
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 }
 
 model Carteira {
@@ -104,14 +106,34 @@ model Carteira {
   cor   String @default("#60a5fa")
 
   usuarioId Int
-  usuario   Usuario @relation(fields: [usuarioId], references: [id])
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+}
+
+model Orcamento {
+  id        Int      @id @default(autoincrement())
+  categoria String
+  limite    Float
+  criadoEm  DateTime @default(now())
+
+  usuarioId Int
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+}
+
+model Historico {
+  id        Int      @id @default(autoincrement())
+  tipo      String
+  descricao String
+  data      DateTime @default(now())
+
+  usuarioId Int
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 }
 
 model TokenRecuperacao {
   id        Int      @id @default(autoincrement())
   token     String   @unique
   usuarioId Int
-  usuario   Usuario  @relation(fields: [usuarioId], references: [id])
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
   expiracao DateTime
   usado     Boolean  @default(false)
 }

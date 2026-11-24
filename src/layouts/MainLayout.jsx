@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, ArrowDownUp, Target, Wallet,
@@ -21,14 +22,37 @@ const navItems = [
 
 export default function MainLayout() {
   const navigate = useNavigate()
+  const [usuario, setUsuario] = useState(() =>
+    JSON.parse(localStorage.getItem('usuario') || '{}')
+  )
+
+  useEffect(() => {
+    function sincronizarSessao(e) {
+      if (!e.key || e.key === 'token' || e.key === 'usuario') {
+        const token = localStorage.getItem('token')
+        if (!token) {
+          navigate('/login')
+          return
+        }
+        setUsuario(JSON.parse(localStorage.getItem('usuario') || '{}'))
+      }
+    }
+
+    window.addEventListener('auth-change', sincronizarSessao)
+    window.addEventListener('storage', sincronizarSessao)
+    return () => {
+      window.removeEventListener('auth-change', sincronizarSessao)
+      window.removeEventListener('storage', sincronizarSessao)
+    }
+  }, [navigate])
 
   function handleLogout() {
     localStorage.removeItem('token')
     localStorage.removeItem('usuario')
+    window.dispatchEvent(new Event('auth-change'))
     navigate('/login')
   }
 
-  const usuario = JSON.parse(localStorage.getItem('usuario') || '{}')
   const iniciais = usuario.nome
     ? usuario.nome.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
     : 'U'

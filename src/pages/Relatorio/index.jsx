@@ -6,9 +6,17 @@ import { useFinance } from '../../context/FinanceContext'
 import './Relatorio.css'
 
 export default function Relatorio() {
-  const { transacoes, metas, carteiras, totalReceitas, totalDespesas, saldo } = useFinance()
+  const { transacoes, metas, carteiras, totalReceitas, totalDespesas, saldo, loading } = useFinance()
   const [gerando, setGerando] = useState(false)
   const [filtro, setFiltro]   = useState('todos')
+
+  if (loading) {
+    return (
+      <div className="relatorio-page" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+        Carregando relatório...
+      </div>
+    )
+  }
 
   const usuario = JSON.parse(localStorage.getItem('usuario') || '{}')
 
@@ -240,7 +248,7 @@ export default function Relatorio() {
             <div className="rel-vazio">Nenhuma transação encontrada.</div>
           ) : (
             transacoesFiltradas.map((t, i) => (
-              <div key={i} className="rel-tabela-row">
+              <div key={t.id || i} className="rel-tabela-row">
                 <span className="t-desc">
                   <div className={`tipo-dot ${t.tipo}`} />
                   {t.desc}

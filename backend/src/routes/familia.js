@@ -3,9 +3,9 @@ const auth = require('../middlewares/auth')
 const {
   criarConta, entrarConta, sairConta, buscarConta,
   removerMembro,
-  listarTransacoes, adicionarTransacao, removerTransacao,
+  listarTransacoes, adicionarTransacao, atualizarTransacao, removerTransacao,
   listarMetas, adicionarMeta, atualizarMeta, removerMeta,
-  listarCarteiras, adicionarCarteira, removerCarteira,
+  listarCarteiras, adicionarCarteira, atualizarCarteira, removerCarteira,
 } = require('../controllers/familiaController')
 
 router.get('/',                      auth, buscarConta)
@@ -16,6 +16,7 @@ router.delete('/membros/:usuarioId', auth, removerMembro)
 
 router.get('/transacoes',            auth, listarTransacoes)
 router.post('/transacoes',           auth, adicionarTransacao)
+router.put('/transacoes/:id',        auth, atualizarTransacao)
 router.delete('/transacoes/:id',     auth, removerTransacao)
 
 router.get('/metas',                 auth, listarMetas)
@@ -25,6 +26,7 @@ router.delete('/metas/:id',          auth, removerMeta)
 
 router.get('/carteiras',             auth, listarCarteiras)
 router.post('/carteiras',            auth, adicionarCarteira)
+router.put('/carteiras/:id',         auth, atualizarCarteira)
 router.delete('/carteiras/:id',      auth, removerCarteira)
 
 module.exports = router

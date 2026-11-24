@@ -1,10 +1,15 @@
-import { useState, useEffect } from 'react'
-import { Users, Plus, LogOut, Copy, Check, TrendingUp, TrendingDown, Target, Wallet, X, UserMinus } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { Users, Plus, LogOut, Copy, Check, TrendingUp, TrendingDown, Target, Wallet, X, UserMinus, SquarePen, Trash2 } from 'lucide-react'
 import { api } from '../../services/api'
 import './Familia.css'
 
 const categorias = ['Alimentação','Moradia','Transporte','Saúde','Educação','Lazer','Salário','Freelance','Outros']
-const vazio = { desc: '', tipo: 'despesa', categoria: 'Alimentação', valor: '', data: '' }
+const cores = ['#60a5fa','#4ade80','#c084fc','#fb923c','#f472b6','#f87171','#34d399','#facc15']
+const iconesMeta = ['🎯','✈️','🏠','🚗','💻','🎓','💍','🛡️']
+
+const vazioTransacao = { desc: '', tipo: 'despesa', categoria: 'Alimentação', valor: '', data: '' }
+const vazioMeta      = { nome: '', objetivo: '', atual: '', icone: '🎯', cor: '#4ade80' }
+const vazioCarteira  = { nome: '', tipo: 'banco', saldo: '', cor: '#60a5fa' }
 
 export default function Familia() {
   const [conta, setConta]             = useState(null)
@@ -16,19 +21,28 @@ export default function Familia() {
   const [metas, setMetas]             = useState([])
   const [carteiras, setCarteiras]     = useState([])
   const [aba, setAba]                 = useState('transacoes')
-  const [modalAberto, setModalAberto] = useState(false)
-  const [form, setForm]               = useState(vazio)
   const [salvando, setSalvando]       = useState(false)
 
+  // Modal e estados de edição
+  const [modalTipo, setModalTipo]     = useState(null) // 'transacao' | 'meta' | 'carteira' | null
+  const [editandoId, setEditandoId]   = useState(null)
+  const [form, setForm]               = useState(vazioTransacao)
+  const [formMeta, setFormMeta]       = useState(vazioMeta)
+  const [formCarteira, setFormCarteira] = useState(vazioCarteira)
+
+  const buscandoRef = useRef(false)
   const usuario = JSON.parse(localStorage.getItem('usuario') || '{}')
 
-  useEffect(() => { carregarConta() }, [])
+  const carregarConta = useCallback(async (silencioso = false) => {
+    if (buscandoRef.current) return
+    buscandoRef.current = true
 
-  async function carregarConta() {
+    if (!silencioso) setLoading(true)
+
     try {
-      setLoading(true)
       const data = await api.get('/familia')
       setConta(data)
+
       if (data) {
         const [t, m, c] = await Promise.all([
           api.get('/familia/transacoes'),
@@ -38,12 +52,113 @@ export default function Familia() {
         setTransacoes(t)
         setMetas(m)
         setCarteiras(c)
+      } else {
+        setTransacoes([])
+        setMetas([])
+        setCarteiras([])
       }
     } catch (err) {
       console.error(err)
     } finally {
-      setLoading(false)
+      if (!silencioso) setLoading(false)
+      buscandoRef.current = false
     }
+  }, [])
+
+  useEffect(() => {
+    carregarConta(false)
+
+    const intervalo = setInterval(() => {
+      if (!document.hidden) {
+        carregarConta(true)
+      }
+    }, 5000)
+
+    function aoFocar() {
+      if (!document.hidden) {
+        carregarConta(true)
+      }
+    }
+
+    function aoMudarSessao(e) {
+      if (!e.key || e.key === 'token' || e.key === 'usuario') {
+        carregarConta(false)
+      }
+    }
+
+    window.addEventListener('focus', aoFocar)
+    document.addEventListener('visibilitychange', aoFocar)
+    window.addEventListener('storage', aoMudarSessao)
+    window.addEventListener('auth-change', aoMudarSessao)
+
+    return () => {
+      clearInterval(intervalo)
+      window.removeEventListener('focus', aoFocar)
+      document.removeEventListener('visibilitychange', aoFocar)
+      window.removeEventListener('storage', aoMudarSessao)
+      window.removeEventListener('auth-change', aoMudarSessao)
+    }
+  }, [carregarConta])
+
+  function fecharModal() {
+    setModalTipo(null)
+    setEditandoId(null)
+    setForm(vazioTransacao)
+    setFormMeta(vazioMeta)
+    setFormCarteira(vazioCarteira)
+  }
+
+  function abrirNovaTransacao() {
+    setEditandoId(null)
+    setForm(vazioTransacao)
+    setModalTipo('transacao')
+  }
+
+  function abrirEditarTransacao(t) {
+    setEditandoId(t.id)
+    setForm({
+      desc: t.desc,
+      tipo: t.tipo,
+      categoria: t.categoria,
+      valor: String(t.valor),
+      data: t.data,
+    })
+    setModalTipo('transacao')
+  }
+
+  function abrirNovaMeta() {
+    setEditandoId(null)
+    setFormMeta(vazioMeta)
+    setModalTipo('meta')
+  }
+
+  function abrirEditarMeta(m) {
+    setEditandoId(m.id)
+    setFormMeta({
+      nome: m.nome,
+      objetivo: String(m.objetivo),
+      atual: String(m.atual),
+      icone: m.icone || '🎯',
+      cor: m.cor || '#4ade80',
+    })
+    setModalTipo('meta')
+  }
+
+  function abrirNovaCarteira() {
+    setEditandoId(null)
+    setFormCarteira(vazioCarteira)
+    setModalTipo('carteira')
+  }
+
+  function abrirEditarCarteira(c) {
+    setEditandoId(c.id)
+    setFormCarteira({
+      nome: c.nome,
+      tipo: c.tipo,
+      saldo: String(c.saldo),
+      cor: c.cor || '#60a5fa',
+    })
+    setModalTipo('carteira')
   }
 
   async function handleCriar() {
@@ -63,7 +178,7 @@ export default function Familia() {
       setErro('')
       const data = await api.post('/familia/entrar', { codigo })
       setConta(data)
-      carregarConta()
+      carregarConta(false)
     } catch (err) {
       setErro(err.message)
     }
@@ -101,21 +216,28 @@ export default function Familia() {
     setTimeout(() => setCopiado(false), 2000)
   }
 
-  async function handleAdicionarTransacao(e) {
+  // --- CRUD TRANSAÇÕES ---
+  async function handleSalvarTransacao(e) {
     e.preventDefault()
     if (!form.desc || !form.valor || !form.data) return
     try {
       setSalvando(true)
-      const nova = await api.post('/familia/transacoes', {
+      const payload = {
         desc: form.desc,
         tipo: form.tipo,
         categoria: form.categoria,
         valor: parseFloat(form.valor),
         data: form.data,
-      })
-      setTransacoes(prev => [nova, ...prev])
-      setForm(vazio)
-      setModalAberto(false)
+      }
+
+      if (editandoId) {
+        const atualizada = await api.put(`/familia/transacoes/${editandoId}`, payload)
+        setTransacoes(prev => prev.map(t => t.id === editandoId ? atualizada : t))
+      } else {
+        const nova = await api.post('/familia/transacoes', payload)
+        setTransacoes(prev => [nova, ...prev])
+      }
+      fecharModal()
     } catch (err) {
       setErro(err.message)
     } finally {
@@ -126,6 +248,73 @@ export default function Familia() {
   async function handleRemoverTransacao(id) {
     await api.delete(`/familia/transacoes/${id}`)
     setTransacoes(prev => prev.filter(t => t.id !== id))
+  }
+
+  // --- CRUD METAS ---
+  async function handleSalvarMeta(e) {
+    e.preventDefault()
+    if (!formMeta.nome || !formMeta.objetivo) return
+    try {
+      setSalvando(true)
+      const payload = {
+        nome: formMeta.nome,
+        objetivo: parseFloat(formMeta.objetivo),
+        atual: parseFloat(formMeta.atual) || 0,
+        icone: formMeta.icone,
+        cor: formMeta.cor,
+      }
+
+      if (editandoId) {
+        const atualizada = await api.put(`/familia/metas/${editandoId}`, payload)
+        setMetas(prev => prev.map(m => m.id === editandoId ? atualizada : m))
+      } else {
+        const nova = await api.post('/familia/metas', payload)
+        setMetas(prev => [...prev, nova])
+      }
+      fecharModal()
+    } catch (err) {
+      setErro(err.message)
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  async function handleRemoverMeta(id) {
+    await api.delete(`/familia/metas/${id}`)
+    setMetas(prev => prev.filter(m => m.id !== id))
+  }
+
+  // --- CRUD CARTEIRAS ---
+  async function handleSalvarCarteira(e) {
+    e.preventDefault()
+    if (!formCarteira.nome || formCarteira.saldo === '') return
+    try {
+      setSalvando(true)
+      const payload = {
+        nome: formCarteira.nome,
+        tipo: formCarteira.tipo,
+        saldo: parseFloat(formCarteira.saldo) || 0,
+        cor: formCarteira.cor,
+      }
+
+      if (editandoId) {
+        const atualizada = await api.put(`/familia/carteiras/${editandoId}`, payload)
+        setCarteiras(prev => prev.map(c => c.id === editandoId ? atualizada : c))
+      } else {
+        const nova = await api.post('/familia/carteiras', payload)
+        setCarteiras(prev => [...prev, nova])
+      }
+      fecharModal()
+    } catch (err) {
+      setErro(err.message)
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  async function handleRemoverCarteira(id) {
+    await api.delete(`/familia/carteiras/${id}`)
+    setCarteiras(prev => prev.filter(c => c.id !== id))
   }
 
   function formatarValor(v) {
@@ -188,6 +377,12 @@ export default function Familia() {
     )
   }
 
+  const abasConfig = [
+    { key: 'transacoes', label: 'Transações' },
+    { key: 'metas',      label: 'Metas' },
+    { key: 'carteiras',  label: 'Carteiras' },
+  ]
+
   return (
     <div className="familia-page">
       <div className="familia-header">
@@ -213,7 +408,7 @@ export default function Familia() {
           <span className="membros-label">Membros ({conta.usuarios?.length || 0})</span>
           <div className="membros-lista">
             {conta.usuarios?.map((u, i) => (
-              <div key={i} className="membro-item">
+              <div key={u.id || i} className="membro-item">
                 <div className="membro-avatar">
                   {u.nome.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
                 </div>
@@ -275,19 +470,34 @@ export default function Familia() {
 
       {/* Abas */}
       <div className="familia-abas">
-        {['transacoes', 'metas', 'carteiras'].map(a => (
+        {abasConfig.map(a => (
           <button
-            key={a}
-            className={`aba-btn ${aba === a ? 'ativa' : ''}`}
-            onClick={() => setAba(a)}
+            key={a.key}
+            className={`aba-btn ${aba === a.key ? 'ativa' : ''}`}
+            onClick={() => setAba(a.key)}
           >
-            {a.charAt(0).toUpperCase() + a.slice(1)}
+            {a.label}
           </button>
         ))}
-        <button className="btn-nova-familia" onClick={() => setModalAberto(true)}>
-          <Plus size={16} />
-          Nova transação
-        </button>
+
+        {aba === 'transacoes' && (
+          <button className="btn-nova-familia" onClick={abrirNovaTransacao}>
+            <Plus size={16} />
+            Nova transação
+          </button>
+        )}
+        {aba === 'metas' && (
+          <button className="btn-nova-familia" onClick={abrirNovaMeta}>
+            <Plus size={16} />
+            Nova meta
+          </button>
+        )}
+        {aba === 'carteiras' && (
+          <button className="btn-nova-familia" onClick={abrirNovaCarteira}>
+            <Plus size={16} />
+            Nova carteira
+          </button>
+        )}
       </div>
 
       {/* Conteúdo das abas */}
@@ -316,9 +526,24 @@ export default function Familia() {
                 <span className={`t-valor ${t.tipo}`}>
                   {t.tipo === 'receita' ? '+' : '-'}{formatarValor(t.valor)}
                 </span>
-                <button className="btn-remover-t" onClick={() => handleRemoverTransacao(t.id)}>
-                  <X size={14} />
-                </button>
+                <div className="familia-acoes-row">
+                  <button
+                    type="button"
+                    className="btn-acao-familia editar"
+                    onClick={() => abrirEditarTransacao(t)}
+                    title="Editar transação"
+                  >
+                    <SquarePen size={15} />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-acao-familia excluir"
+                    onClick={() => handleRemoverTransacao(t.id)}
+                    title="Excluir transação"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
               </div>
             ))
           )}
@@ -334,8 +559,28 @@ export default function Familia() {
               const pct = Math.min(Math.round((m.atual / m.objetivo) * 100), 100)
               return (
                 <div key={m.id} className="familia-meta-card">
-                  <div className="meta-icone" style={{ background: m.cor + '22', color: m.cor }}>
-                    {m.icone}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                    <div className="meta-icone" style={{ background: m.cor + '22', color: m.cor }}>
+                      {m.icone}
+                    </div>
+                    <div className="familia-acoes-row">
+                      <button
+                        type="button"
+                        className="btn-acao-familia editar"
+                        onClick={() => abrirEditarMeta(m)}
+                        title="Editar meta"
+                      >
+                        <SquarePen size={15} />
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-acao-familia excluir"
+                        onClick={() => handleRemoverMeta(m.id)}
+                        title="Excluir meta"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
                   </div>
                   <div className="meta-info-familia">
                     <h3>{m.nome}</h3>
@@ -359,7 +604,27 @@ export default function Familia() {
           ) : (
             carteiras.map(c => (
               <div key={c.id} className="familia-carteira-card" style={{ borderTopColor: c.cor }}>
-                <h3>{c.nome}</h3>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h3>{c.nome}</h3>
+                  <div className="familia-acoes-row">
+                    <button
+                      type="button"
+                      className="btn-acao-familia editar"
+                      onClick={() => abrirEditarCarteira(c)}
+                      title="Editar carteira"
+                    >
+                      <SquarePen size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-acao-familia excluir"
+                      onClick={() => handleRemoverCarteira(c.id)}
+                      title="Excluir carteira"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                </div>
                 <span className="carteira-tipo">{c.tipo}</span>
                 <div className={`carteira-saldo ${c.saldo >= 0 ? 'positivo' : 'negativo'}`}>
                   {formatarValor(c.saldo)}
@@ -370,17 +635,17 @@ export default function Familia() {
         </div>
       )}
 
-      {/* Modal nova transação */}
-      {modalAberto && (
-        <div className="modal-overlay" onClick={() => setModalAberto(false)}>
+      {/* Modal Transação (Criar / Editar) */}
+      {modalTipo === 'transacao' && (
+        <div className="modal-overlay" onClick={fecharModal}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>Nova transação compartilhada</h3>
-              <button className="modal-fechar" onClick={() => setModalAberto(false)}>
+              <h3>{editandoId ? 'Editar transação compartilhada' : 'Nova transação compartilhada'}</h3>
+              <button className="modal-fechar" onClick={fecharModal}>
                 <X size={20} />
               </button>
             </div>
-            <form className="modal-form" onSubmit={handleAdicionarTransacao}>
+            <form className="modal-form" onSubmit={handleSalvarTransacao}>
               <div className="tipo-toggle">
                 <button
                   type="button"
@@ -433,7 +698,161 @@ export default function Familia() {
                 </select>
               </div>
               <button type="submit" className="btn-salvar" disabled={salvando}>
-                {salvando ? 'Salvando...' : 'Salvar transação'}
+                {salvando ? 'Salvando...' : editandoId ? 'Salvar alterações' : 'Salvar transação'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Meta (Criar / Editar) */}
+      {modalTipo === 'meta' && (
+        <div className="modal-overlay" onClick={fecharModal}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>{editandoId ? 'Editar meta compartilhada' : 'Nova meta compartilhada'}</h3>
+              <button className="modal-fechar" onClick={fecharModal}>
+                <X size={20} />
+              </button>
+            </div>
+            <form className="modal-form" onSubmit={handleSalvarMeta}>
+              <div className="form-group">
+                <label>Nome da meta</label>
+                <input
+                  placeholder="Ex: Viagem em família"
+                  value={formMeta.nome}
+                  onChange={e => setFormMeta({ ...formMeta, nome: e.target.value })}
+                />
+              </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Objetivo (R$)</label>
+                  <input
+                    type="number" placeholder="0,00" min="0" step="0.01"
+                    value={formMeta.objetivo}
+                    onChange={e => setFormMeta({ ...formMeta, objetivo: e.target.value })}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Valor atual (R$)</label>
+                  <input
+                    type="number" placeholder="0,00" min="0" step="0.01"
+                    value={formMeta.atual}
+                    onChange={e => setFormMeta({ ...formMeta, atual: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="form-group">
+                <label>Ícone e Cor</label>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+                  {iconesMeta.map(ic => (
+                    <button
+                      key={ic}
+                      type="button"
+                      onClick={() => setFormMeta({ ...formMeta, icone: ic })}
+                      style={{
+                        padding: '0.4rem 0.6rem',
+                        borderRadius: '8px',
+                        border: formMeta.icone === ic ? '2px solid #4ade80' : '1px solid var(--border)',
+                        background: 'transparent',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {ic}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  {cores.map(cor => (
+                    <button
+                      key={cor}
+                      type="button"
+                      onClick={() => setFormMeta({ ...formMeta, cor })}
+                      style={{
+                        width: '24px',
+                        height: '24px',
+                        borderRadius: '50%',
+                        background: cor,
+                        border: formMeta.cor === cor ? '2px solid #fff' : 'none',
+                        outline: formMeta.cor === cor ? '2px solid #1e293b' : 'none',
+                        cursor: 'pointer'
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+              <button type="submit" className="btn-salvar" disabled={salvando}>
+                {salvando ? 'Salvando...' : editandoId ? 'Salvar alterações' : 'Criar meta'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Carteira (Criar / Editar) */}
+      {modalTipo === 'carteira' && (
+        <div className="modal-overlay" onClick={fecharModal}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>{editandoId ? 'Editar carteira compartilhada' : 'Nova carteira compartilhada'}</h3>
+              <button className="modal-fechar" onClick={fecharModal}>
+                <X size={20} />
+              </button>
+            </div>
+            <form className="modal-form" onSubmit={handleSalvarCarteira}>
+              <div className="form-group">
+                <label>Nome da carteira</label>
+                <input
+                  placeholder="Ex: Conta Conjunta"
+                  value={formCarteira.nome}
+                  onChange={e => setFormCarteira({ ...formCarteira, nome: e.target.value })}
+                />
+              </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Tipo</label>
+                  <select
+                    value={formCarteira.tipo}
+                    onChange={e => setFormCarteira({ ...formCarteira, tipo: e.target.value })}
+                  >
+                    <option value="banco">Banco</option>
+                    <option value="cartao">Cartão</option>
+                    <option value="dinheiro">Dinheiro</option>
+                    <option value="invest">Investimento</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Saldo (R$)</label>
+                  <input
+                    type="number" placeholder="0,00" step="0.01"
+                    value={formCarteira.saldo}
+                    onChange={e => setFormCarteira({ ...formCarteira, saldo: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="form-group">
+                <label>Cor</label>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  {cores.map(cor => (
+                    <button
+                      key={cor}
+                      type="button"
+                      onClick={() => setFormCarteira({ ...formCarteira, cor })}
+                      style={{
+                        width: '24px',
+                        height: '24px',
+                        borderRadius: '50%',
+                        background: cor,
+                        border: formCarteira.cor === cor ? '2px solid #fff' : 'none',
+                        outline: formCarteira.cor === cor ? '2px solid #1e293b' : 'none',
+                        cursor: 'pointer'
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+              <button type="submit" className="btn-salvar" disabled={salvando}>
+                {salvando ? 'Salvando...' : editandoId ? 'Salvar alterações' : 'Criar carteira'}
               </button>
             </form>
           </div>

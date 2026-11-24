@@ -12,6 +12,8 @@ app.use('/metas',       require('./routes/metas'))
 app.use('/carteiras',   require('./routes/carteiras'))
 app.use('/recuperacao', require('./routes/recuperacao'))
 app.use('/familia',     require('./routes/familia'))
+app.use('/orcamentos',  require('./routes/orcamentos'))
+app.use('/historico',   require('./routes/historico'))
 
 app.get('/', (req, res) => res.json({ status: 'API rodando!' }))
 

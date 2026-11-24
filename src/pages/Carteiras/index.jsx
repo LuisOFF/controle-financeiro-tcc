@@ -14,11 +14,19 @@ function Icone({ tipo, size = 22 }) {
 }
 
 export default function Carteiras() {
-  const { carteiras, adicionarCarteira, removerCarteira } = useFinance()
+  const { carteiras, adicionarCarteira, removerCarteira, loading } = useFinance()
   const [modalAberto, setModalAberto] = useState(false)
   const [form, setForm]               = useState(vazio)
   const [erro, setErro]               = useState('')
   const [salvando, setSalvando]       = useState(false)
+
+  if (loading) {
+    return (
+      <div className="carteiras-page" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+        Carregando carteiras...
+      </div>
+    )
+  }
 
   const totalSaldo    = carteiras.reduce((acc, c) => acc + c.saldo, 0)
   const totalPositivo = carteiras.filter(c => c.saldo > 0).reduce((acc, c) => acc + c.saldo, 0)

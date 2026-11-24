@@ -295,7 +295,7 @@
 
 .familia-tabela-header {
   display: grid;
-  grid-template-columns: 2fr 1.2fr 1fr 1fr 1fr 40px;
+  grid-template-columns: 2fr 1.2fr 1fr 1fr 1fr 76px;
   padding: 12px 20px;
   background: var(--bg-muted);
   font-size: 12px;
@@ -307,7 +307,7 @@
 
 .familia-tabela-row {
   display: grid;
-  grid-template-columns: 2fr 1.2fr 1fr 1fr 1fr 40px;
+  grid-template-columns: 2fr 1.2fr 1fr 1fr 1fr 76px;
   padding: 14px 20px;
   border-top: 1px solid var(--border-muted);
   font-size: 14px;
@@ -337,18 +337,50 @@
 .t-valor.receita  { color: #22c55e; }
 .t-valor.despesa  { color: #ef4444; }
 
-.btn-remover-t {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--border-color);
+/* ── Botões Editar (Verde) e Excluir (Vermelho) ── */
+.familia-acoes-row {
   display: flex;
-  padding: 4px;
-  border-radius: 6px;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.btn-acao-familia {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
   transition: all 0.2s;
 }
 
-.btn-remover-t:hover { color: #ef4444; background: #fef2f222; }
+.btn-acao-familia.editar {
+  background: #f0fdf422;
+  color: #22c55e;
+  border: 1px solid #22c55e44;
+}
+
+.btn-acao-familia.editar:hover {
+  background: #22c55e;
+  color: #ffffff;
+  border-color: #22c55e;
+}
+
+.btn-acao-familia.excluir {
+  background: #fef2f222;
+  color: #ef4444;
+  border: 1px solid #ef444444;
+}
+
+.btn-acao-familia.excluir:hover {
+  background: #ef4444;
+  color: #ffffff;
+  border-color: #ef4444;
+}
 
 .familia-vazio {
   padding: 40px;
