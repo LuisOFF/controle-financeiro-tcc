@@ -1,10 +1,14 @@
 import { useState, useMemo } from 'react'
-import { TrendingUp, TrendingDown, Wallet, Target, Calendar, RotateCcw, Plus, X, SquarePen, Trash2 } from 'lucide-react'
+import {
+  TrendingUp, TrendingDown, Wallet, Target, Calendar, RotateCcw,
+  Plus, X, SquarePen, Trash2, ArrowUpDown, ArrowUp, ArrowDown
+} from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
 } from 'recharts'
 import { useFinance } from '../../context/FinanceContext'
+import SeletorMes from '../../components/SeletorMes'
 import './Dashboard.css'
 
 const CORES = ['#4ade80', '#60a5fa', '#c084fc', '#fb923c', '#f472b6', '#94a3b8']
@@ -57,6 +61,36 @@ function normalizarAnoMes(dataStr) {
   return `${ano}-${String(mes).padStart(2, '0')}`
 }
 
+function chaveDataOrdenacao(dataStr) {
+  if (!dataStr || typeof dataStr !== 'string') return ''
+  const isoMatch = dataStr.trim().match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (isoMatch) return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`
+
+  const brMatch = dataStr.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})/)
+  if (brMatch) return `${brMatch[3]}-${brMatch[2]}-${brMatch[1]}`
+
+  return dataStr.trim()
+}
+
+function parsearValor(valor) {
+  if (typeof valor === 'number') return Number.isFinite(valor) ? valor : 0
+  if (!valor) return 0
+
+  const limpo = String(valor)
+    .replace(/\s+/g, '')
+    .replace(/^R\$/i, '')
+    .trim()
+
+  if (limpo.includes(',')) {
+    const normalizado = limpo.replace(/\./g, '').replace(',', '.')
+    const num = Number(normalizado)
+    return Number.isFinite(num) ? num : 0
+  }
+
+  const num = Number(limpo)
+  return Number.isFinite(num) ? num : 0
+}
+
 function TooltipCustom({ active, payload, label }) {
   if (active && payload && payload.length) {
     return (
@@ -64,7 +98,7 @@ function TooltipCustom({ active, payload, label }) {
         <p className="tooltip-label">{label}</p>
         {payload.map((p, i) => (
           <p key={i} style={{ color: p.color }}>
-            {p.name === 'receitas' ? 'Receitas' : 'Despesas'}: R$ {p.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            {p.name === 'receitas' ? 'Receitas' : 'Despesas'}: R$ {Number(p.value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </p>
         ))}
       </div>
@@ -80,6 +114,8 @@ export default function Dashboard() {
   const [preset, setPreset] = useState('6m')
   const [mesInicio, setMesInicio] = useState(padrao.inicio)
   const [mesFim, setMesFim] = useState(padrao.fim)
+  const [ordenarPor, setOrdenarPor] = useState('data')
+  const [ordemDirecao, setOrdemDirecao] = useState('desc')
 
   // Modal único: 'form' (criar/editar) ou 'excluir' (confirmar exclusão)
   const [modalAberto, setModalAberto] = useState(false)
@@ -89,6 +125,24 @@ export default function Dashboard() {
   const [form, setForm] = useState(criarFormVazio)
   const [salvando, setSalvando] = useState(false)
   const [erroModal, setErroModal] = useState('')
+
+  function handleOrdenarColuna(coluna) {
+    if (ordenarPor === coluna) {
+      setOrdemDirecao(prev => (prev === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setOrdenarPor(coluna)
+      setOrdemDirecao(coluna === 'data' || coluna === 'valor' ? 'desc' : 'asc')
+    }
+  }
+
+  function renderIconeOrdenacao(coluna) {
+    if (ordenarPor !== coluna) {
+      return <ArrowUpDown size={13} style={{ opacity: 0.55, flexShrink: 0 }} />
+    }
+    return ordemDirecao === 'asc'
+      ? <ArrowUp size={13} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+      : <ArrowDown size={13} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+  }
 
   function abrirModalNova() {
     setModoModal('form')
@@ -227,17 +281,39 @@ export default function Dashboard() {
     })
   }, [transacoes, mesInicio, mesFim])
 
+  // Transações filtradas e ordenadas (padrão: data mais recente primeiro)
+  const transacoesOrdenadas = useMemo(() => {
+    const fator = ordemDirecao === 'asc' ? 1 : -1
+
+    return [...transacoesFiltradas].sort((a, b) => {
+      let comparacao = 0
+
+      if (ordenarPor === 'valor') {
+        comparacao = Math.abs(parsearValor(a.valor)) - Math.abs(parsearValor(b.valor))
+      } else if (ordenarPor === 'data') {
+        comparacao = chaveDataOrdenacao(a.data).localeCompare(chaveDataOrdenacao(b.data))
+      } else {
+        const strA = String(a[ordenarPor] || '').toLowerCase()
+        const strB = String(b[ordenarPor] || '').toLowerCase()
+        comparacao = strA.localeCompare(strB, 'pt-BR')
+      }
+
+      if (comparacao !== 0) return comparacao * fator
+      return Number(b.id || 0) - Number(a.id || 0)
+    })
+  }, [transacoesFiltradas, ordenarPor, ordemDirecao])
+
   // Totais do período filtrado
   const totalReceitasPeriodo = useMemo(() => {
     return transacoesFiltradas
       .filter(t => t.tipo === 'receita')
-      .reduce((acc, t) => acc + t.valor, 0)
+      .reduce((acc, t) => acc + parsearValor(t.valor), 0)
   }, [transacoesFiltradas])
 
   const totalDespesasPeriodo = useMemo(() => {
     return transacoesFiltradas
       .filter(t => t.tipo === 'despesa')
-      .reduce((acc, t) => acc + t.valor, 0)
+      .reduce((acc, t) => acc + parsearValor(t.valor), 0)
   }, [transacoesFiltradas])
 
   // Gastos por categoria no período filtrado
@@ -247,7 +323,7 @@ export default function Dashboard() {
       .filter(t => t.tipo === 'despesa')
       .forEach(t => {
         const cat = t.categoria || 'Outros'
-        mapa[cat] = (mapa[cat] || 0) + t.valor
+        mapa[cat] = (mapa[cat] || 0) + parsearValor(t.valor)
       })
 
     return Object.entries(mapa)
@@ -260,48 +336,35 @@ export default function Dashboard() {
     ? gastosPorCategoriaPeriodo
     : [{ name: 'Sem gastos', value: 1 }]
 
-  // Dados mensais dinâmicos para o gráfico de barras
+  // Dados mensais apenas dos meses presentes nas transações filtradas
   const dadosMensais = useMemo(() => {
-    const iniNorm = normalizarAnoMes(mesInicio)
-    const fimNorm = normalizarAnoMes(mesFim)
-    if (!iniNorm || !fimNorm) return []
+    const mapa = {}
+    transacoesFiltradas.forEach(t => {
+      const ym = normalizarAnoMes(t.data)
+      if (!ym) return
+      if (!mapa[ym]) mapa[ym] = { ym, receitas: 0, despesas: 0 }
+      if (t.tipo === 'receita') mapa[ym].receitas += parsearValor(t.valor)
+      if (t.tipo === 'despesa') mapa[ym].despesas += parsearValor(t.valor)
+    })
 
-    const [anoIni, mesIni] = iniNorm.split('-').map(Number)
-    const [anoFim, mesF] = fimNorm.split('-').map(Number)
+    const chaves = Object.keys(mapa).sort()
     const anoAtual = new Date().getFullYear()
 
-    const resultado = []
-    const cursor = new Date(2000, mesIni - 1, 1)
-    cursor.setFullYear(anoIni)
+    return chaves.map(ym => {
+      const [anoStr, mesStr] = ym.split('-')
+      const ano = Number(anoStr)
+      const mesIdx = Number(mesStr) - 1
+      const label = ano === anoAtual
+        ? MESES_NOMES[mesIdx]
+        : `${MESES_NOMES[mesIdx]}/${anoStr.slice(-2)}`
 
-    const limite = new Date(2000, mesF - 1, 1)
-    limite.setFullYear(anoFim)
-
-    // Trava de segurança de até 36 meses no gráfico
-    let contador = 0
-    while (cursor <= limite && contador < 36) {
-      const ano = cursor.getFullYear()
-      const mesNum = String(cursor.getMonth() + 1).padStart(2, '0')
-      const prefixo = `${ano}-${mesNum}`
-      const labelMes = ano === anoAtual
-        ? MESES_NOMES[cursor.getMonth()]
-        : `${MESES_NOMES[cursor.getMonth()]}/${String(ano).slice(-2)}`
-
-      const receitas = transacoesFiltradas
-        .filter(t => t.tipo === 'receita' && normalizarAnoMes(t.data) === prefixo)
-        .reduce((acc, t) => acc + Number(t.valor || 0), 0)
-
-      const despesas = transacoesFiltradas
-        .filter(t => t.tipo === 'despesa' && normalizarAnoMes(t.data) === prefixo)
-        .reduce((acc, t) => acc + Number(t.valor || 0), 0)
-
-      resultado.push({ mes: labelMes, receitas, despesas })
-      cursor.setMonth(cursor.getMonth() + 1)
-      contador++
-    }
-
-    return resultado
-  }, [transacoesFiltradas, mesInicio, mesFim])
+      return {
+        mes: label,
+        receitas: mapa[ym].receitas,
+        despesas: mapa[ym].despesas,
+      }
+    })
+  }, [transacoesFiltradas])
 
   const descricaoPeriodo = useMemo(() => {
     if (preset === '6m') return 'Últimos 6 meses'
@@ -328,11 +391,11 @@ export default function Dashboard() {
   const cards = [
     {
       title: 'Saldo Total',
-      value: saldo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+      value: Number(saldo || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
       icon: <Wallet size={22} />,
       color: 'card-blue',
       trend: 'Saldo atual acumulado',
-      up: saldo >= 0,
+      up: Number(saldo || 0) >= 0,
     },
     {
       title: 'Receitas',
@@ -359,6 +422,20 @@ export default function Dashboard() {
       up: true,
     },
   ]
+
+  const estiloColunaBtn = {
+    background: 'none',
+    border: 'none',
+    padding: 0,
+    font: 'inherit',
+    color: 'inherit',
+    textTransform: 'inherit',
+    letterSpacing: 'inherit',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '5px',
+    cursor: 'pointer',
+  }
 
   return (
     <div className="dashboard">
@@ -393,20 +470,20 @@ export default function Dashboard() {
           <Calendar size={15} className="filtro-icon" />
           <label className="data-campo">
             <span>De</span>
-            <input
-              type="month"
+            <SeletorMes
               value={mesInicio}
               max={mesFim || undefined}
-              onChange={e => handleAlterarInicio(e.target.value)}
+              onChange={handleAlterarInicio}
+              ariaLabel="Mês inicial"
             />
           </label>
           <label className="data-campo">
             <span>Até</span>
-            <input
-              type="month"
+            <SeletorMes
               value={mesFim}
               min={mesInicio || undefined}
-              onChange={e => handleAlterarFim(e.target.value)}
+              onChange={handleAlterarFim}
+              ariaLabel="Mês final"
             />
           </label>
 
@@ -513,7 +590,7 @@ export default function Dashboard() {
                 ))}
               </Pie>
               {temGastos && (
-                <Tooltip formatter={v => `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} />
+                <Tooltip formatter={v => `R$ ${Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} />
               )}
               <Legend
                 iconType="circle"
@@ -538,25 +615,37 @@ export default function Dashboard() {
       </div>
       <div className="transacoes-table">
         <div className="table-header">
-          <span>Descrição</span>
-          <span>Categoria</span>
-          <span>Data</span>
-          <span>Valor</span>
+          <button type="button" style={estiloColunaBtn} onClick={() => handleOrdenarColuna('desc')}>
+            <span>Descrição</span>
+            {renderIconeOrdenacao('desc')}
+          </button>
+          <button type="button" style={estiloColunaBtn} onClick={() => handleOrdenarColuna('categoria')}>
+            <span>Categoria</span>
+            {renderIconeOrdenacao('categoria')}
+          </button>
+          <button type="button" style={estiloColunaBtn} onClick={() => handleOrdenarColuna('data')}>
+            <span>Data</span>
+            {renderIconeOrdenacao('data')}
+          </button>
+          <button type="button" style={estiloColunaBtn} onClick={() => handleOrdenarColuna('valor')}>
+            <span>Valor</span>
+            {renderIconeOrdenacao('valor')}
+          </button>
           <span></span>
         </div>
-        {transacoesFiltradas.length === 0 ? (
+        {transacoesOrdenadas.length === 0 ? (
           <div className="table-row" style={{ gridTemplateColumns: '1fr', textAlign: 'center', color: 'var(--text-muted)' }}>
             Nenhuma transação encontrada neste período.
           </div>
         ) : (
-          transacoesFiltradas.slice(0, 5).map((t, i) => (
+          transacoesOrdenadas.slice(0, 5).map((t, i) => (
             <div key={t.id || i} className="table-row">
               <span className="t-desc">{t.desc}</span>
               <span className="t-cat">{t.categoria}</span>
               <span className="t-data">{t.data?.split('-').reverse().join('/')}</span>
               <span className={`t-valor ${t.tipo}`}>
                 {t.tipo === 'receita' ? '+' : '-'}
-                {t.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                {parsearValor(t.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </span>
               <div className="dash-acoes-row">
                 <button
@@ -616,7 +705,7 @@ export default function Dashboard() {
                     }}
                   >
                     {itemExcluir.desc} —{' '}
-                    {Number(itemExcluir.valor || 0).toLocaleString('pt-BR', {
+                    {parsearValor(itemExcluir.valor).toLocaleString('pt-BR', {
                       style: 'currency',
                       currency: 'BRL',
                     })}
