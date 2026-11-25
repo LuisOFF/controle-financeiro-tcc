@@ -67,21 +67,145 @@
   color: var(--text-secondary);
 }
 
-.data-campo input[type="month"] {
+/* ── Seletor de Mês Customizado (padrão do sistema) ── */
+.seletor-mes {
+  position: relative;
+  display: inline-block;
+}
+
+.seletor-mes-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 170px;
   padding: 6px 10px;
   border-radius: 8px;
   border: 1px solid var(--border-color);
   background: var(--bg-muted);
   color: var(--text-primary);
   font-size: 13px;
+  font-weight: 500;
   font-family: inherit;
-  outline: none;
   cursor: pointer;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, background 0.2s;
 }
 
-.data-campo input[type="month"]:focus {
+.seletor-mes-btn:hover,
+.seletor-mes-btn.aberto {
   border-color: var(--text-primary);
+}
+
+.seletor-mes-icone {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.seletor-mes-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 60;
+  width: 248px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow, 0 12px 28px rgba(0, 0, 0, 0.35));
+  color: var(--text-primary);
+}
+
+.seletor-mes-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-muted);
+}
+
+.seletor-mes-ano {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.seletor-mes-nav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-muted);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.seletor-mes-nav:hover {
+  background: var(--bg-hover);
+  border-color: var(--text-secondary);
+}
+
+.seletor-mes-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.seletor-mes-item {
+  padding: 7px 4px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.seletor-mes-item:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--border-color);
+}
+
+.seletor-mes-item.selecionado {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+  font-weight: 700;
+}
+
+.seletor-mes-item:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.seletor-mes-rodape {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-muted);
+}
+
+.seletor-mes-hoje {
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.seletor-mes-hoje:hover {
+  text-decoration: underline;
 }
 
 .btn-reset-filtro {
